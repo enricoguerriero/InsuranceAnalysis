@@ -1,0 +1,320 @@
+---
+title: "Homework 2.0"
+author: "Giacomo Ballarin, Andrea Buzzo, Enrico Guerriero"
+date: "2023-05-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Il dataset
+
+```{r, include=FALSE}
+setwd("C:/Users/enric/Desktop/data analytics")
+insurance <- read.csv("insurance.csv")
+library(ggplot2)
+library(magrittr)
+library(ggcorrplot)
+insurance$smoker <- factor(insurance$smoker)
+insurance$sex <- factor(insurance$sex)
+insurance$region <- factor(insurance$region)
+```
+
+
+Il dataset di riferimento è lo stesso dei primi homework, ma prima di iniziare visualizziamo comunque brevemente le variabili:  
+- age: variabile quantitativa, indica l'età  
+- sex: variabile dicotomica, indica il sesso  
+- bmi: variabile quantitativa, indica l'indice di massa corporea  
+- children: variabile quantitativa con solo 6 realizzazioni (pertanto possibile uno studio come categorica), indica il numero di figli  
+- smoker: variabile dicotomica, indica se la persona è un fumatore  
+- region: variabile categorica, indica la regione di appartenenza  
+- charges: variabile quantitativa, indica le spese mediche  
+
+Una breve esplorazione grafica delle correlazioni tra variabili quantitative:
+```{r, include = T, echo = F}
+ggcorrplot(cor(insurance[,c("age", "bmi", "children", "charges")]))
+```
+ 
+
+## Modello lineare semplice con charges
+
+Charges è la variabile quantitativa che rappresenta le spese mediche, in questo punto costruiamo dei modelli di regressione lineare semplice tra charges e le altre variabili.
+Quello che ci aspettiamo prima di effettuare le regressioni è che le più efficaci siano l'età e il bmi, visto che sono le uniche variabili quantitative (con un discreto numero di realizzazioni) e quindi riescono ad identificare con maggior precisione le singole osservazioni nel dataset.
+Seguono ora output dei summary e grafici delle regressioni lineari semplici di charges con le altre variabili:
+```{r, include = TRUE, echo = FALSE}
+agemodel <- lm(charges ~ age, data = insurance)
+summary(agemodel)
+ggplot(data = insurance, mapping = aes(age, charges)) +
+    geom_point() +
+    geom_smooth(aes(x = age, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ age ")
+```  
+
+La retta di regressione non sembra avere un fit molto efficace con l'età: si osserva infatti come i dati siano distribuiti su tre "fasce": una inferiore, con una densità di punti maggiore, grazie alla quale la retta di regressione è così vicina ai punti; una centrale ed una superiore, con numerosità visibilmente più basse, che sembrano essere più o meno parallele a quella inferiore.
+Ciò fa sì che il fit della retta non risulti particolarmente efficace.
+Per quanto rigurarda il summary, sembra dare ragione a quanto appena detto: l'$R^2$ si aggira intorno al 9%, la retta non riesce a spiegare efficacemente la varianza dei dati.
+
+```{r, include = TRUE, echo = FALSE}
+bmimodel <- lm(charges ~ bmi, data = insurance)
+summary(bmimodel)
+ggplot(data = insurance, mapping = aes(bmi, charges)) +
+    geom_point() +
+    geom_smooth(aes(x = bmi, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ bmi ")
+```  
+
+Il grafico tra le spese mediche e il BMI non sembra essere particolarmente efficace; la varianza dei dati non è ben descritta dalla retta (con un $R^2$ che si aggira intorno al 4%).
+
+```{r, include = TRUE, echo = FALSE}
+childrenmodel <- lm(charges ~ children, data = insurance)
+summary(childrenmodel)
+ggplot(data = insurance, mapping = aes(children, charges)) +
+    geom_point() +
+    geom_smooth(aes(x = children, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ children ")
+``` 
+
+La variabile children è una variabile quantitativa di fatto, tuttavia con poche determinazioni.
+Come si osserva sia graficamente sia analiticamente, la retta è poco efficace, l'$R^2$ è minore dell'1%.
+In alternativa, si può costruire il modello con la variabile fattorizzata (osserviamo solo il summary e i boxplot delle distribuzioni):  
+```{r, include = TRUE, echo = FALSE}
+childrenmodel <- lm(charges ~ factor(children), data = insurance)
+summary(childrenmodel)
+ggplot(data = insurance, aes(x = factor(children), y = charges)) +
+    geom_boxplot(fill = "darkgoldenrod1") +
+    theme_classic() +
+    labs(title = "Boxplot delle spese mediche per numero di figli") +
+    xlab("children")
+```  
+
+Si osserva come effettivamente l'$R^2$ sia aumentato, ma si aggira ancora su valori molto bassi (poco più dell'1%); il risultato non è comunque particolarmente soddisfacente, dal momento che la fattorizzazione della variabile comporta una diminuzione dell'$R^2$ corretto, un indice che tiene conto (penalizzando) del numero di variabili: fattorizzando una variabile con 6 determinazioni, infatti, si ottengono 5 coefficienti oltre all'intercetta.
+Anche per quanto riguarda la significatività dei coefficienti non ci possiamo considerare soddisfatti: solo due su cinque (2 e 3 figli) sono significativi al livello di confidenza del 95%.  
+Infine anche dai boxplot emerge come la media rimanga approssimativamente costante per numero di figli e cambia solo la variabilità (ma cambiano anche le numerosità).  
+```{r, include = TRUE, echo = FALSE}
+smokermodel <- lm(charges ~ smoker, data = insurance)
+summary(smokermodel)
+ggplot(data = insurance, mapping = aes(smoker, charges)) +
+    geom_boxplot(fill = "darkgoldenrod1") +
+    theme_classic() +
+    labs(title = "Boxplot delle spese mediche per fumatori e non fumatori")
+```  
+
+Per quanto riguarda la variabile smoker, una variabile dicotomica con solamente 2 realizzazioni, i risultati sono sorprendenti: la variabile spiega da sola oltre il 60% della varianza facendo riferimento all'$R^2$, e anche graficamente è evidente la differenza di distribuzione delle spese mediche tra fumatori e non fumatori.  
+```{r, include = TRUE, echo = FALSE}
+sexmodel <- lm(charges ~ sex, data = insurance)
+summary(sexmodel)
+ggplot(data = insurance, mapping = aes(sex, charges)) +
+    geom_boxplot(fill = "darkgoldenrod1") +
+    theme_classic() +
+    labs(title = "Boxplot delle spese mediche per maschi e femmine")
+```  
+
+Il sesso non risulta essere una variabile particolarmente significativa, si evince dall'$R^2$ particolarmente basso e dalla significatività del coefficiente che, seppur accettiamo con un livello di confidenza del 95%, è molto più bassa rispetto ai coefficienti visti fin'ora. Inoltre, il valore del coefficiente è più piccolo dell'intercetta di un'ordine di grandezza, ciò significa che la differenza di spese mediche tra maschi e femmine descritta dal modello è molto piccola.  
+Anche graficamente è facile notare questa evidenza, sebbene i maschi abbiano più dispersione intorno alla media.  
+```{r, include = TRUE, echo = FALSE}
+regionmodel <- lm(charges ~ region, data = insurance)
+summary(regionmodel)
+ggplot(data = insurance, mapping = aes(region, charges)) +
+    geom_boxplot(fill = "darkgoldenrod1") +
+    theme_classic() +
+    labs(title = "Boxplot delle spese mediche per regioni")
+```  
+
+Per quanto riguarda le regioni, il risultato è il meno soddisfacente tra tutte le variabili: l'$R^2$ è molto basso e nessun coefficiente (ad eccezione dell'intercetta) è significativo. Potrebbe essere significativa se fatta interagire con un'altra variabile, ma da sola è una variabile del tutto trascurabile.  
+
+
+
+## Modello lineare charges ~ age
+
+Il modello di regressione lineare assume la seguente forma:
+$$charges = \beta_0 + \beta_1*age $$
+Ristampiamo il summary:  
+```{r, include = TRUE, echo = FALSE}
+summary(agemodel)
+```
+
+Utilizzando i coefficienti proposti dalla funzione di R, si ottiene la formula:
+$$charges = 3165.9 + 257.7*age$$
+L'interpretazione dei coefficienti risulta piuttosto immediata: $\beta_o$ (3165.9) è la spesa medica stimata per una persona di 0 anni; questa non può considerarsi a tutti gli effetti un'interpretazione sensata poiché, sebbene le persone possano avere 0 anni, il nostro dataset contiene dati di persone che vanno dai 18 anni in su. $\beta_1$ (257.7), invece, è l'incremento delle spese mediche per un'aumento unitario dell'età; sostanzialmente, una persona di età $t$ paga 257.7 in meno di una persona di età $t+1$.  
+
+Si passa ora all'analisi dei residui; nei residui si cerca:  
+- Normalità  
+- Linearità  
+- Omoschedasticità  
+Cominciamo con la visualizzazione grafica:
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, mapping = aes(age, resid(agemodel))) +
+    geom_point() +
+    theme_classic() +
+    labs(title = "Residui del modello charges ~ age") +
+    geom_hline(yintercept=0, linewidth = 1)
+ggplot(data = insurance, mapping = aes(resid(agemodel))) +
+    geom_histogram(aes(y =after_stat(density)),bins = 20, fill = "darkorange1", alpha = 1) + 
+    geom_density(linewidth = 0.8, fill = "darkgoldenrod1", alpha = 0.3) +
+    theme_classic()
+ggplot(data.frame(resid = resid(agemodel)),aes(sample = resid)) + 
+    stat_qq() +
+    stat_qq_line(color = "red", linewidth = 1) +
+    theme_classic()
+```
+
+Risulta evidente l'inadeguatezza dei residui, il loro problema più evidente è la non normalità.  
+Si possono provare delle trasformazioni delle variabili per migliorare questo problema (consapevolmente che l'interpretazione dei coefficienti diventerà più difficile).
+La trasformazione logaritmica della variabile charges sembra risolvere parte del problema di non normalità, tuttavia si generano dei residui maggiormente eteroschedastici.  
+```{r, include = TRUE, echo = FALSE}
+agemodellog <- lm(log(charges) ~ age, data = insurance)
+summary(agemodellog)
+ggplot(data = insurance, mapping = aes(age, log(charges))) +
+    geom_point() +
+    geom_smooth(aes(x = age, y = log(charges)), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ age ")
+ggplot(data = insurance, mapping = aes(age, resid(agemodel))) +
+    geom_point() +
+    theme_classic() +
+    labs(title = "Residui del modello charges ~ age") +
+    geom_hline(yintercept=0, linewidth = 1)
+```
+
+La radice e le trasformazioni della variabile età, invece, non sembrano risolvere il problema.
+Per semplicità interpretativa decidiamo di continuare a studiare il modello senza trasformazioni, preferendo l'omoschedasticità alla normalità dei residui.
+
+
+
+## Rappresentazione grafica del modello
+
+Si rappresenta il modello stampando lo scatterplot tra le variabili age e charges, aggiungendo la retta di regressione e due bande che rappresentano lo scostamento di un anno sull’età ed il rispettivo incremento atteso sulle spese mediche stimato dal modello (la rappresentazione semplice del modello è già stata fatta nei punti precedenti):
+
+```{r, include = T, echo = F,  fig.width=5,fig.height=6}
+df %>% ggplot(data = insurance, mapping = aes(age, charges)) +
+    geom_point() +
+    geom_smooth(aes(x = age, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ age ") +
+    ylim(0,70000) +
+    xlim(18,65) +
+    geom_segment(aes(x = 40, y = 0, xend = 41, yend = 0), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(agemodel,newdata = data.frame(age = 40)), xend = 18, yend = predict(agemodel,newdata = data.frame(age = 41))), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(agemodel,newdata = data.frame(age = 40)), xend = 40, yend = predict(agemodel,newdata = data.frame(age = 40))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 18, y = predict(agemodel,newdata = data.frame(age = 41)), xend = 41, yend = predict(agemodel,newdata = data.frame(age = 41))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 40, y = 0, xend = 40, yend = predict(agemodel,newdata = data.frame(age = 40))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 41, y = 0, xend = 41, yend = predict(agemodel,newdata = data.frame(age = 41))), linewidth = 0.5, col = "firebrick1", linetype = "dashed")
+```
+
+
+
+Nel grafico sono messe in evidenza le due rette che rispondono alla consegna, mentre la retta di regressione, già evidenziata in precedenza, si vede più sottile.
+Il grafico è più alto e stretto degli altri se no non si sarebbe vista la differenza tra le rette poiché si sovrapponevano.
+
+
+## Modello di charges e age con interazione con la variabile smoker
+
+Si prova ora a introdurre l'interazione tra age e smoker nel modello proposto fin'ora.
+Osserviamo i summary dei tre modelli diversi che si ottengono:
+```{r, include=TRUE, echo = FALSE}
+model1 <- lm(charges ~ age, data = insurance)
+#summary(model1)
+model2 <- lm(charges ~ age + smoker, data = insurance)
+summary(model2)
+model3 <- lm(charges ~ age + age:smoker, data = insurance)
+summary(model3)
+model4 <- lm(charges ~ age*smoker, data = insurance)
+summary(model4)
+```
+
+Dai summary risulta immediatamente evidente una cosa: la variabile smoker apporta un miglioramento significativo rispetto al modello dotato solamente della variabile age; tuttavia, sia il modello additivo (con $R^2$ maggiore) sia quello con la sola interazione sembrano essere efficaci, mentre in quello in cui sono presenti entrambi la componente con l'interazione risulta non significativa.  
+Ci aspettiamo quindi di scegliere o il modello additivo, o quello con l'interazione.
+Per decidere, confrontiamo gli AIC:
+```{r, include = T, echo = F}
+AIC(model1, model2, model3, model4)
+```
+Nella tabella, model1 è il modello con solo age, model2 con age e smoker additivo, model3 con age e smoker moltiplicativo, model4 con age e smoker moltiplicativo e additivo.  
+Osservando l'AIC, il mdodello moltiplicativo sembra migliore di quello additivo, al contrario dell'$R^2$.  
+Per un'ulteriore verifica, visualizziamo graficamente i due modelli:
+
+```{r, include=T, echo = F}
+ggplot(data = insurance, mapping = aes(age, charges, col = smoker)) +
+    geom_point() +
+    geom_abline(slope = coef(model3)[2], intercept = coef(model3)[1], col = "darkgoldenrod1", linewidth = 1) +
+    geom_abline(slope = coef(model3)[2] + coef(model3)[3], intercept = coef(model3)[1], col = "deepskyblue1", linewidth = 1) +
+    theme_classic() +
+    labs(title = "Modello moltiplicativo") +
+    scale_color_manual(values = c("no" = "goldenrod1", "yes" = "deepskyblue1"))
+ggplot(data = insurance, mapping = aes(age, charges, col = smoker)) +
+    geom_point() +
+    geom_abline(slope = coef(model2)[2], intercept = coef(model2)[1], col = "darkgoldenrod1", linewidth = 1) +
+    geom_abline(slope = coef(model2)[2],intercept = coef(model2)[3] + coef(model2)[1], col = "deepskyblue1", linewidth = 1) +
+    theme_classic() +
+    labs(title = "Modello additivo") +
+    scale_color_manual(values = c("no" = "goldenrod1", "yes" = "deepskyblue1"))
+```
+
+Graficamente il modello additivo sembra migliore, poiché in entrambi si percepisce l'influenza di una terza variabile, e nel modello moltiplicativo l'effetto sembra essere più bias.
+
+
+## Analisi del modello con age e smoker
+
+Dopo la visualizzazione grafica e del summary del modello (presenti nel punto precedente), visualizziamo i residui:
+```{r, include = T, echo = F}
+ggplot(data = insurance, mapping = aes(age, resid(model2))) +
+    geom_point() +
+    theme_classic() +
+    labs(title = "Residui del modello charges ~ age + smoker") +
+    geom_hline(yintercept=0, linewidth = 1)
+ggplot(data = insurance, mapping = aes(resid(model2))) +
+    geom_histogram(aes(y =after_stat(density)),bins = 20, fill = "darkorange1", alpha = 1) + 
+    geom_density(linewidth = 0.8, fill = "darkgoldenrod1", alpha = 0.3) +
+    theme_classic()
+ggplot(data.frame(resid = resid(model2)),aes(sample = resid)) + 
+    stat_qq() +
+    stat_qq_line(color = "red", linewidth = 1) +
+    theme_classic()
+```
+
+Il modello, anche dall'osservazione dei residui, sembra simile a quello precedente ottenuto con la sola variabile age ma migliorato: i residui sembrano abbastanza lineari e omoschedastici, ma la normalità è ancora lontana; anche in questo caso si potrebbe effettuare una trasformazione alla variabile charges, ma il logaritmo rende i residui eteroschedastici mentre la radice non ha un effetto molto evidente.  
+
+A questo punto si visualizza il grafico con le bande rappresentanti uno scostamento di un anno di età:
+```{r, include = T, echo = F, fig.width=5,fig.height=6}
+df %>% ggplot(data = insurance, mapping = aes(age, charges, col = smoker)) +
+    geom_point() +
+    scale_color_manual(values = c("no" = "goldenrod1", "yes" = "deepskyblue1")) +
+    geom_smooth(data = insurance[insurance$smoker == "no",], aes(x = age, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    geom_smooth(data = insurance[insurance$smoker == "yes",], aes(x = age, y = charges), method = "lm", se = F, col = "darkgoldenrod1", linewidth = 1, formula = y ~ x) +
+    theme_classic() +
+    labs(title = "Scatterplot con regressione lineare charges ~ age ") +
+    ylim(0,70000) +
+    xlim(18,65) +
+    geom_segment(aes(x = 40, y = 0, xend = 41, yend = 0), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 40, smoker = "no")), xend = 18, yend = predict(model2,newdata = data.frame(age = 41, smoker = "no"))), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 40, smoker = "no")), xend = 40, yend = predict(model2,newdata = data.frame(age = 40, smoker = "no"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 41, smoker = "no")), xend = 41, yend = predict(model2,newdata = data.frame(age = 41, smoker = "no"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 40, y = 0, xend = 40, yend = predict(model2,newdata = data.frame(age = 40, smoker = "no"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 41, y = 0, xend = 41, yend = predict(model2,newdata = data.frame(age = 41, smoker = "no"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 40, y = 0, xend = 41, yend = 0), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 40, smoker = "yes")), xend = 18, yend = predict(model2,newdata = data.frame(age = 41, smoker = "yes"))), linewidth = 1, col = "firebrick1") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 40, smoker = "yes")), xend = 40, yend = predict(model2,newdata = data.frame(age = 40, smoker = "yes"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 18, y = predict(model2,newdata = data.frame(age = 41, smoker = "yes")), xend = 41, yend = predict(model2,newdata = data.frame(age = 41, smoker = "yes"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 40, y = 0, xend = 40, yend = predict(model2,newdata = data.frame(age = 40, smoker = "yes"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed") +
+    geom_segment(aes(x = 41, y = 0, xend = 41, yend = predict(model2,newdata = data.frame(age = 41, smoker = "yes"))), linewidth = 0.5, col = "firebrick1", linetype = "dashed")
+```
+
+## Previsione delle spese mediche per un 40enne
+
+Ora si effettuano le previsioni delle spese mediche supportate da un 40enne utilizzando il modello additivo tra age e smoker.  
+Come prima cosa, valutiamo le spese mediche stimate di un 40enne non fumatore:
+```{r, include = T, echo = F}
+as.numeric(predict(model2,newdata = data.frame(age = 40, smoker = "no")))
+```
+
+Adesso valutiamo le spese mediche stimate di un 40enne fumatore:
+```{r, include = T, echo = F}
+as.numeric(predict(model2,newdata = data.frame(age = 40, smoker = "yes")))
+```
+
+Le spese mediche per un fumatore 40enne sono mediamente quasi 4 volte tanto quelle di un coetaneo non fumatore.  
+La morale di questi homework è non fumare.

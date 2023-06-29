@@ -1,0 +1,357 @@
+---
+title: "Homework Data Analytics"
+author: "Devid Rosa, Marco Secci, Enrico Guerriero"
+date: "Maggio 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## **Il dataset: insurance.csv**
+
+Il dataset oggetto di studio contiene i dati sulle spese mediche sostenute da una compagnia assicurativa.
+In seguito all'importazione del dataset e alla fattorizzazione delle variabili qualitative, vediamo nel dettaglio tutte le variabili:
+```{r, echo = FALSE}
+insurance <- read.csv("C:/Users/enric/Downloads/insurance.csv")
+insurance$sex <- factor(insurance$sex)
+insurance$smoker <- factor(insurance$smoker)
+insurance$region <- factor(insurance$region)
+```
+```{r, include = TRUE, echo=FALSE}
+summary(insurance)
+```
+
+
+### **Rappresentazione grafica delle variabili categoriali**
+
+```{r, include = FALSE}
+library(ggplot2)
+library(cowplot)
+```
+
+Le variabili categoriali sono il **sesso**, la variabile dicotomica **fumatore** e la **regione geografica** di appartenenza; eventualmente si può considerare come variabile categorica la variabile **numero di figli**, vista la quantità ridotta di determinazioni.
+Graficamente si distribuiscono così (nei grafici sono messe in evidenza le realizzazioni più frequenti):
+
+```{r, include=TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = sex)) +
+    geom_bar(data = subset(insurance, sex == "male"), colour = "red", lwd = 3) +
+    geom_bar(aes(fill = sex)) +
+    theme_classic() +
+    scale_fill_manual(values = c("female" = "salmon1","male" = "steelblue1")) +
+    labs(title = "Distribuzione del sesso") +
+    xlab("Sesso") +
+    ylab("Frequenza assoluta") +
+    scale_x_discrete(labels = c("Femmina", "Maschio")) 
+```
+
+Si osserva graficamente come la distribuzione del sesso degli assicurati sia **simmetrica**: si tratta di 662 assicurati di sesso femminile (circa 49,5%) e di 676 assicurati di sesso maschile (circa 50,5%).
+
+
+```{r, include=TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = smoker)) +
+    geom_bar(data = subset(insurance, smoker == "no"), aes(x = smoker), colour = "red", lwd = 3) +
+    geom_bar(aes(fill = smoker)) +
+    theme_classic() +
+    scale_fill_manual(values = c("no" = "salmon1","yes" = "steelblue1")) +
+    labs(title = "Distribuzione della variabile fumatore") +
+    xlab("Fumatore") +
+    ylab("Frequenza assoluta") +
+    scale_x_discrete(labels = c("No", "Sì"))
+```
+
+Non vale la stessa cosa per i fumatori: la distribuzione è **fortemente asimmetrica**, infatti si parla di 274 fumatori (circa 20%) contro 1064 non fumatori (circa 80%).
+
+
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = region)) +
+    geom_bar(data = subset(insurance, region == "southeast"), aes(x = region),
+             colour = "red", lwd = 3)+
+    geom_bar(aes(fill = region)) +
+    theme_classic() +
+    scale_fill_manual(values = c("northeast" = "salmon1","northwest" = "steelblue1",
+                                 "southeast" = "mediumorchid1", "southwest" = "goldenrod1")) +
+    labs(title = "Distribuzione dell'appartenenza alle regioni geografiche") +
+    xlab("Regione") +
+    ylab("Frequenza assoluta") +
+    scale_x_discrete(labels = c("Nord-Est", "Nord-Ovest", "Sud-Est", "Sud-Ovest"))
+```
+
+La regione geografica di appartenenza, invece, ha nuovamente una distribuzione **simmetrica**: si hanno 324 assicurati dal Nord-Est (circa 24%), 325 assicurati dal Nord-Ovest (circa 24%), 364 assicurati dal Sud-Est (circa 27%) e 325 assicurati dal Sud-Ovest (circa 24%).
+
+
+Un'ulteriore variabile che può essere considerata categorica, sebbene la sua natura quantitativa discreta, è il **numero dei figli**, grazie al **numero ridotto di determinazioni** che assume.
+Si osserva la distribuzione attraverso un barplot:
+```{r, include = TRUE, echo=FALSE}
+ggplot(data = insurance, aes(x = factor(children))) +
+    geom_bar(data = subset(insurance, factor(children) == "0"), aes(x = factor(children)),
+             colour = "red", lwd = 3)+
+    geom_bar(aes(fill = factor(children)), show.legend = FALSE) +
+    theme_classic() +
+    scale_fill_manual(values = c("0" = "salmon1","1" = "steelblue1",
+                                 "2" = "mediumorchid1", "3" = "goldenrod1",
+                                 "4" = "palegreen3", "5" = "bisque1")) +
+    labs(title = "Distribuzione del numero di figli") +
+    xlab("Numero di figli") +
+    ylab("Frequenza assoluta") +
+    scale_x_discrete(labels = c("0", "1", "2", "3", "4", "5"))
+```
+
+Si osserva come la variabile presenti un'**asimmetria positiva**: infatti, buona parte delle persone non hanno figli (42.8%), mentre le altre categorie presentano rispettivamente le seguenti proporzioni: 24.2%, 18.0%, 11.8%, 1.9%, fino all'1.3% rappresentato da famiglie con 5 figli. 
+
+
+### **Spese mediche condizionate al numero di figli**
+
+Si rappresentano le spese mediche condizionate al numero di figli; prima di effettuare l'analisi  grafica, è stata creata una nuova variabile nel dataset, rappresentante il numero di figli in cui tutte le famiglie con 3 o più figli sono accorpate nell'unica determinazione "**3+**".
+La nuova variabile è stata salvata come variabile **categoriale**.
+```{r, include=FALSE}
+insurance$cd <- insurance$children
+insurance[insurance$cd > 3,]$cd <- 3
+insurance$cd <- factor(insurance$cd)
+levels(insurance$cd) <- c(0, 1, 2, "3+")
+```
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = cd, y = charges, fill = cd)) +
+    geom_boxplot() +
+    theme_classic()  +
+    labs(title = "Spese mediche condizionate al numero di figli", fill = "Figli") +
+    xlab("Numero di figli") +
+    ylab("Spese mediche") +
+    scale_fill_manual(values = c("0" = "salmon1", "1" = "steelblue1",
+                                 "2" = "mediumorchid1", "3+" = "goldenrod1")) +
+    geom_segment(data = subset(insurance, cd == 0), 
+                 aes(x = 0.625, xend = 1.375, y = mean(charges), yend = mean(charges)),
+                 col = "red", lwd = 1.2) +
+    geom_segment(data = subset(insurance, cd == 1),
+                 aes(x = 1.625, xend = 2.375, y = mean(charges), yend = mean(charges)),
+                 col = "red", lwd = 1.2) +
+    geom_segment(data = subset(insurance, cd == 2),
+                 aes(x = 2.625, xend = 3.375, y = mean(charges), yend = mean(charges)),
+                 col = "red", lwd = 1.2) +
+    geom_segment(data = subset(insurance, cd == "3+"), 
+                 aes(x = 3.625, xend = 4.375, y = mean(charges), yend = mean(charges)),
+                 col = "red", lwd = 1.2)
+```
+
+Dal grafico emerge subito una forte **asimmetria a destra** nei dati per tutte le quattro le distribuzioni condizionate, come si evince da diversi aspetti: la presenza di numerosi **punti anomali** al di sopra dei baffi, l'assenza di un punto anomalo nella zona inferiore; la lunghezza del baffo punta alla stessa conclusione, osservando come quelli inferiori siano tutti molto corti; inoltre, la mediana, ad eccezione della prima classe, si trova più vicina al primo quartile rispetto al terzo; infine, sfruttando la linea rossa rappresentante la **media**, si osserva come essa sia **sempre superiore alla mediana**.
+Tutti questi fattori sono indici di **asimmetria positiva**.
+
+
+### **Spese mediche condizionate all'indice di massa corporea**
+
+Come prima cosa, per le rappresentazioni grafiche, è stata creata la variabile bmicat come descritto nella consegna, divisa nelle 4 categorie underweight, normal, overweight e obese.
+```{r, include = FALSE}
+insurance$bmicat <- cut(insurance$bmi, breaks = c(0,18.5,25,30,60), right = FALSE)
+levels(insurance$bmicat) <- c("underweight", "normal", "overweight", "obese")
+```
+Si rappresentano graficamente i 4 **istogrammi** della distribuzione delle frequenze assolute delle spese mediche, ciascuno per una categoria di BMI (**Body Mass Index**).
+
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = charges, fill = bmicat)) +
+    facet_grid(insurance$bmicat) +
+    geom_histogram(bins = 30) +
+    theme_classic() +
+    labs(title = "Distribuzione delle spese mediche rispetto al BMI (frequenze assolute)") +
+    xlab("Spese mediche") +
+    ylab("Frequenza") +
+    scale_fill_manual(values = c("underweight" = "salmon1", "normal" = "steelblue1",
+                                 "overweight" = "mediumorchid1", "obese" = "goldenrod1"))
+```
+
+Si costruiscono ora i grafici delle distribuzioni delle frequenze relative, così da poterci sovrapporre le **funzioni di densità empiriche**:
+```{r, include = TRUE, echo=FALSE}
+ggplot(data = insurance, aes(x = charges, fill = bmicat)) +
+    facet_grid(insurance$bmicat) +
+    geom_histogram(aes(y = after_stat(density)),bins = 30) +
+    theme_classic() +
+    labs(title = "Distribuzione delle spese mediche rispetto al BMI (frequenze relative)") +
+    xlab("Spese mediche") +
+    ylab("Frequenza") +
+    geom_density(col = "red", lwd = 0.75) +
+    scale_fill_manual(values = c("underweight" = "salmon1", "normal" = "steelblue1",
+                                 "overweight" = "mediumorchid1", "obese" = "goldenrod1"))
+```
+
+
+### **Relazione tra l'indice di massa e il sesso**
+
+Si studia la possibile correlazione tra l'indice di massa corporea e il sesso. 
+Prima di tutto si effettua uno studio preliminare grafico:
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = sex, fill = bmicat)) +
+    geom_bar() +
+    theme_classic() +
+    labs(title = "Barplot del sesso condizionato al BMI") +
+    xlab("Sesso") +
+    ylab("Frequenza") +
+    scale_fill_manual(values = c("underweight" = "salmon1", "normal" = "steelblue1",
+                                 "overweight" = "mediumorchid1", "obese" = "goldenrod1"))
+```
+
+Questo primo grafico suggerisce già una scarsa correlazione tra le variabili, poiché sembra che le **proporzioni di maschi e femmine**, a seconda dell'indice di massa corporea, siano coerenti; le differenze più evidenti sono che i maschi hanno un BMI leggermente superiore, essendo la frequenza delle persone obese è maggiore negli uomini rispetto che nelle donne, a discapito di quelle sottopeso, maggiormente presente nelle femmine.
+
+```{r, include = TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = bmicat, fill = sex)) +
+    geom_bar(col = "black") +
+    theme_classic() +
+    labs(title = "Barplot del BMI condizionato al sesso") +
+    xlab("BMI") +
+    ylab("Frequenza") +
+    scale_fill_manual(values = c("female" = "salmon1", "male" = "steelblue1")) +
+    geom_segment(data = subset(insurance, bmicat == "underweight"),
+                 aes(x = .55, xend = 1.45, y = length(bmicat)/2, yend = length(bmicat)/2),
+                 col = "red", lwd = 1, linetype = "dashed") +
+    geom_segment(data = subset(insurance, bmicat == "normal"),
+                 aes(x = 1.55, xend = 2.45, y = length(bmicat)/2, yend = length(bmicat)/2),
+                 col = "red", lwd = 1, linetype = "dashed") +
+    geom_segment(data = subset(insurance, bmicat == "overweight"),
+                 aes(x = 2.55, xend = 3.45, y = length(bmicat)/2, yend = length(bmicat)/2),
+                 col = "red", lwd = 1, linetype = "dashed") +
+    geom_segment(data = subset(insurance, bmicat == "obese"),
+                 aes(x = 3.55, xend = 4.45, y = length(bmicat)/2, yend = length(bmicat)/2),
+                 col = "red", lwd = 1, linetype = "dashed")
+```
+
+Il secondo grafico è più chiaro, e risulta **plausibile pensare che le due variabili siano indipendenti**; in particolare, a questo grafico è stata aggiunta una linea rossa tratteggiata a metà dell'altezza della barra, e può tornare utile per vedere quanto la proporzione di maschi e femmine si discosta da tale linea. Questo sistema è attendibile esclusivamente perché la percentuale di maschi e femmine presenti è pressoché 50% per categoria.
+
+```{r, include=TRUE, echo = FALSE}
+ggplot(data = insurance, aes(x = bmicat, fill = sex)) +
+    geom_bar(position = "dodge", color = "black", stat = "count") +
+    theme_classic() +
+    labs(title = "Barplot delle frequenze rispetto a BMI e sesso") +
+    xlab("BMI") +
+    ylab("Frequenza") +
+    scale_fill_manual(values = c("female" = "salmon1", "male" = "steelblue1"))
+```
+
+L'ultimo grafico è la conferma di quanto osservato fin'ora: le proporzioni tra maschio e femmina, a parità di livello di BMI, sono molto simili, a meno di un piccolo scarto.
+Ora cerchiamo conferma delle considerazioni effettuate graficamente usando un indice analitico: l'indice del $X^2$.
+Per effettuare il test del $X^2$ si assume un livello di confidenza del 95%.
+```{r, include=TRUE, echo = FALSE}
+tab1<-table(insurance$bmicat, insurance$sex)
+chisq.test(tab1, correct = T)
+```
+Il p-value del test risulta essere circa 0.36, pertanto non ci sono evidenze per rifiutare l'ipotesi nulla di indipendenza tra le variabili. 
+Conseguentemente alle considerazioni fatte graficamente e con il test, si può assumere che le variabili sesso e indice di massa corporea siano **non dipendenti** (per il nostro dataset).
+
+
+### **Relazione tra spese mediche, età e fumo**
+
+In questo ultimo paragrafo si osserva la relazione che intercorre tra le variabili spese mediche, età e fumo; sia le spese mediche che l'età sono variabili quantitative, pertanto è possibile utilizzare un **grafico di dispersione** per poterle analizzare:
+
+
+```{r, include = FALSE}
+theme_set(theme_void())
+main <- ggplot(data = insurance, aes(x = age, y = charges, col = smoker)) +
+    geom_point() +
+    scale_x_continuous(breaks = c(20,30,40,50,60)) +
+    theme(legend.position = "none",
+          panel.grid.major = element_line(color = "lightgray", linetype = 2, size = 0.75),
+          panel.grid.minor = element_blank(),
+          axis.line = element_blank(),  
+          axis.text = element_blank(),  
+          axis.title = element_blank(),  
+          axis.ticks = element_blank())  +
+    xlab(NULL) +
+    ylab(NULL) +
+    scale_color_manual(values = c("no" = "goldenrod1", "yes" = "mediumorchid1")) +
+    xlim(16.5,65.5) +
+    ylim(-2200,67200) 
+g1 <- ggplot(data = insurance, aes(x = charges)) +
+    geom_boxplot()  +  
+    xlim(0,70000) + 
+    theme_classic() +
+    theme(panel.grid.major.y = element_line(color = "lightgray", linetype = "dashed", size = 0.75)) +
+    labs(x = "Spese mediche", y = NULL)  + 
+  scale_y_continuous( breaks = NULL, labels = NULL) +  
+  theme(axis.line.x = element_blank(),  
+        axis.text.x = element_blank(),  
+        axis.ticks.x = element_blank()) +
+    scale_x_continuous(position = "top") +
+    coord_flip() 
+g2 <- ggplot(data  = insurance, aes(x = age)) +
+    geom_boxplot()+
+    xlim(17,65) +
+    theme_classic() +
+    labs(x = "Età", y = NULL)  + 
+    scale_x_continuous(position = "top") +
+  scale_y_continuous(breaks = NULL, labels = NULL) +  
+  theme(axis.line.y = element_blank(),  
+        axis.text.y = element_blank(),  
+        axis.ticks.y = element_blank(),
+        panel.grid.major.x = element_line(color = "lightgray", linetype = "dashed", size = 0.75)) 
+g3 <- ggplot(insurance, aes(x = age, fill = smoker)) +
+    geom_density(data = insurance, alpha = 0.3, adjust = 1.5)  +
+    theme_classic() +
+    theme(legend.position = "none",
+          panel.grid = element_line(color = "gray", linetype = "dashed", size = 0.75)) +
+    scale_fill_manual(values = c("no" = "goldenrod1", "yes" = "mediumorchid1")) +
+    xlim(18,64) +
+    labs(x = "Età", y = NULL)  +  
+  scale_y_continuous( breaks = NULL, labels = NULL) +  
+  theme(axis.line.y = element_blank(),  
+        axis.text.y = element_blank(),  
+        axis.ticks.y = element_blank(),
+        panel.grid.major.x = element_line(color = "lightgray", linetype = "dashed", size = 0.75))
+g4 <- ggplot(insurance, aes(x = charges, fill = smoker)) + 
+    geom_density(data = insurance, alpha = 0.5, adjust = 1.5) +
+    scale_fill_manual(values = c("no" = "goldenrod1", "yes" = "mediumorchid1")) +
+    xlim(1000,64000) +
+    theme_classic() +
+    theme(panel.grid.major.y = element_line(color = "gray", linetype = 2, size = .75)) +
+    labs(x = "Spese mediche", y = NULL)  + 
+  scale_y_continuous( breaks = NULL, labels = NULL) +  
+  theme(axis.line.x = element_blank(),  
+        axis.text.x = element_blank(),  
+        axis.ticks.x = element_blank()) +
+    coord_flip() +
+    theme(legend.position = "none")
+legg <- ggplot(insurance, aes(x = age, fill = smoker)) +
+    geom_histogram() +
+    theme_classic() +
+    scale_fill_manual(values = c("no" = "goldenrod1", "yes" = "mediumorchid1"))
+leg <- get_legend(legg)
+```
+
+```{r, include=TRUE, echo=FALSE}
+plot_grid(
+  NULL, g2, leg,
+  g4, main, g1,
+  NULL, g3, NULL,
+  ncol = 3, nrow = 3, rel_heights = c(1, 1, 1), rel_widths = c(1,1,1)
+) 
+```
+
+Il grafico principale mostra già come mediamente le spese mediche aumentino lievemente con l'aumentare dell'età e invece si può notare una **forte distinzione** tra le spese mediche a carico di **fumatori** e quelle dei **non fumatori**. 
+Analizzando il grafico di densità della variabile **"charges"** in relazione a **"smoker"** possiamo infatti notare come le persone che non fumano si concentrano tra i valori **0** e **20000**, mentre i fumatori presentano una **distribuzione bimodale** con i picchi in corrispondenza dei valori **20000** e **40000**.
+Il secondo grafico della densità mostra come l'età e l'essere fumatori non sono fattori fortemente dipendenti (test del $X^2$ con ipotesi nulla di indipendenza risulta un p-value di 0.24); si può notare come il livello di fumatori cala più velocemente una volta superati i 50 anni, ma con il campione di dati a disposizione non si possono trarre conclusioni rilevanti da questa osservazione.
+Nel **boxplot** relativo all'età delle persone di cui sono stati raccolti i dati, possiamo notare una forma regolare della scatola e la mediana posizionata quasi a metà, indice di una distribuzione simmetrica della variabile nell'intervallo 18-64.
+Il boxplot relativo alle spese mediche mostra come la scatola sia posizionata molto in basso rispetto all'intero range dei dati e di come ci siano diversi valori indicati come **outlayers**; il fenomeno si verifica perché i dati dei fumatori sono molti meno rispetto agli altri e quindi non sono sufficienti a modificare significativamente la posizione della scatola.
+
+```{r, include = FALSE}
+mylabels <- c("Non fumatore", "Fumatore")
+mylabeller <- function(variable, value){
+    return(mylabels[value])
+}
+finalplot <- ggplot(data = insurance) + 
+    geom_point(mapping = aes(x=age,y=charges,col=smoker,shape=factor(smoker)), show.legend = F)+
+    facet_wrap(~ smoker, ncol = 2, labeller = mylabeller)+
+    theme_dark()+
+    theme(panel.background=element_rect(fill="light grey"))+
+    scale_color_manual(values=c("white","yellow"))+
+    scale_shape_manual(values=c(13,15))+
+    geom_smooth(aes(x=age,y=charges, fill=smoker),method = "lm",se = F, col="red", show.legend = F, 
+                formula = y ~ x) +
+    xlab("Età") +
+    ylab("Spese mediche") +
+    ggtitle("Diagramma di dispersione età - spese mediche per fumatori e non fumatori")
+```
+```{r, include=TRUE, echo=FALSE}
+finalplot
+```
+
+
+L'ultimo grafico, in cui sono presenti anche le **rette di regressione**, conferma quanto affermato in precedenza: emerge in modo evidente la correlazione positiva tra età e spese mediche e la forte influenza del fumo sulle spese.
+Graficamente si nota come le due rette di regressione per dati di non fumatori e fumatori siano approssimativamente parallele: ciò significa che il valore della variabile dicotomica **"smoker"** (0 / 1) incide sull'**intercetta** della retta, ma non c'è interazione significativa con la variabile **"age"**.
